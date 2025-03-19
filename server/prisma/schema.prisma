@@ -1,0 +1,76 @@
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [uuid_ossp(map: "uuid-ossp", schema: "extensions")]
+  schemas    = ["auth", "public"]
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema", "postgresqlExtensions"]
+}
+
+model User {
+  id            String        @id @db.Uuid
+  email         String?       @unique
+  name          String?
+  googleid      String?       @unique
+  avatar_url    String?
+  updated_at    DateTime?     @db.Timestamptz(6)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  transactions  Transaction[] @relation("UserTransactions")
+  splits        Split[]
+  friendsAsUser Friend[]      @relation("UserFriends")
+  friendsOf     Friend[]      @relation("FriendOf")
+
+  @@schema("public")
+}
+
+model Transaction {
+  id          String   @id @default(uuid()) @db.Uuid
+  amount      Float
+  description String
+  date        DateTime @default(now())
+  userId      String   @map("userid") @db.Uuid
+  issplit     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  splits      Split[]
+  user        User     @relation("UserTransactions", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@schema("public")
+}
+
+model Split {
+  id            String      @id @default(cuid())
+  transactionId String      @map("transactionid") @db.Uuid
+  userId        String      @map("userid") @db.Uuid
+  amount        Float
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([transactionId, userId])
+  @@index([userId])
+  @@index([transactionId])
+  @@schema("public")
+}
+
+model Friend {
+  id        String   @id @default(cuid())
+  userId    String   @map("userid") @db.Uuid
+  friendId  String   @map("friendid") @db.Uuid
+  user      User     @relation("UserFriends", fields: [userId], references: [id], onDelete: Cascade)
+  friend    User     @relation("FriendOf", fields: [friendId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
+  @@schema("public")
+}
