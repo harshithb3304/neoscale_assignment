@@ -72,6 +72,7 @@ export async function POST(request: Request) {
       where: { id: transactionId },
       data: { issplit: true },
     });
+    console.log('Transaction updated as split', transactionId, friendIds);
 
     return NextResponse.json({ splits }, { headers: corsHeaders });
   } catch (error) {

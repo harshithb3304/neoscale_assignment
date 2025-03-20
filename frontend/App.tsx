@@ -9,6 +9,7 @@ import supabase from './src/utils/supabase';
 import { Session } from '@supabase/supabase-js';
 import { SessionProvider } from './src/app/SessionContext';
 
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {

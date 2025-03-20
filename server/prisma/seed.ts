@@ -10,7 +10,7 @@ async function main() {
     { id: '550e8400-e29b-41d4-a716-446655440000', email: 'alice@example.com', name: 'Alice Johnson' },
     { id: '550e8400-e29b-41d4-a716-446655440001', email: 'bob@example.com', name: 'Bob Smith' },
     { id: '550e8400-e29b-41d4-a716-446655440002', email: 'charlie@example.com', name: 'Charlie Brown' },
-    { id: '71f856ca-47a8-4e86-bb46-d1ce8c61fd00', email: 'cs22b2015@iiitdm.ac.in', name: 'CS Student' },
+    { id: '71f856ca-47a8-4e86-bb46-d1ce8c61fd00', email: 'cs22b2015@iiitdm.ac.in', name: 'CS22B2015 Harshith B' },
     { id: '715c2452-b13a-4bac-a0d9-be36778ce733', email: 'harsh03032004@gmail.com', name: 'Harshith' },
   ];
 
@@ -54,16 +54,6 @@ async function main() {
 
   console.log("✅ Friend relationships seeded.");
 
-  // Create transactions for cs22b2015@iiitdm.ac.in
-  const transaction1 = await prisma.transaction.create({
-    data: {
-      amount: 100.0,
-      description: 'Lunch at Cafe',
-      date: new Date('2025-03-15'),
-      userId: user4.id,  // cs22b2015@iiitdm.ac.in
-      issplit: false,
-    },
-  });
 
   const transaction2 = await prisma.transaction.create({
     data: {
@@ -75,16 +65,7 @@ async function main() {
     },
   });
 
-  // Create transactions for harsh03032004@gmail.com
-  const transaction3 = await prisma.transaction.create({
-    data: {
-      amount: 150.0,
-      description: 'Groceries',
-      date: new Date('2025-03-17'),
-      userId: user5.id,  // harsh03032004@gmail.com
-      issplit: false,
-    },
-  });
+
 
   const transaction4 = await prisma.transaction.create({
     data: {

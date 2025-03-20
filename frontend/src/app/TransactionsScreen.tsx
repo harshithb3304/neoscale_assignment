@@ -58,7 +58,6 @@ interface SplitTransactionModalProps {
   fetchTransactions: () => void;
 }
 
-// const API_URL = 'http://localhost:3000/api';
 
 export const TransactionsScreen = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -157,16 +156,6 @@ export const TransactionsScreen = () => {
     }
   };
 
-  // const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-  //   setShowDatePicker(false);
-  //   if (selectedDate) {
-  //     if (datePickerMode === 'start') {
-  //       setFilters({ ...filters, startDate: selectedDate });
-  //     } else {
-  //       setFilters({ ...filters, endDate: selectedDate });
-  //     }
-  //   }
-  // };
 
   const handleSplitTransaction = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
@@ -808,12 +797,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
   },
-  // dateRangeContainer: {
-  //   flexDirection: 'row',
-  //   justifyContent: 'space-between',
-  //   alignItems: 'center',
-  //   marginBottom: 20,
-  // },
   dateButton: {
     backgroundColor: '#f0f0f0',
     borderRadius: 5,
@@ -824,19 +807,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  // amountRangeContainer: {
-  //   flexDirection: 'row',
-  //   justifyContent: 'space-between',
-  //   marginBottom: 20,
-  // },
-  // amountInput: {
-  //   flex: 1,
-  //   borderWidth: 1,
-  //   borderColor: '#ccc',
-  //   borderRadius: 5,
-  //   padding: 10,
-  //   marginHorizontal: 5,
-  // },
   clearFiltersButton: {
     backgroundColor: '#f44336',
     borderRadius: 5,

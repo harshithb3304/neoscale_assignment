@@ -9,7 +9,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 // Define the navigation types
 type RootStackParamList = {
   SignIn: undefined;
-  HomeScreen: { user: any }; // Replace `any` with the actual user type
+  HomeScreen: { user: any }; 
 };
 
 type SignInScreenNavigationProp = StackNavigationProp<RootStackParamList, 'SignIn'>;
@@ -22,7 +22,8 @@ export const SignInScreen = () => {
     if (Platform.OS !== 'web') {
       GoogleSignin.configure({
         scopes: ['https://www.googleapis.com/auth/drive.readonly'],
-        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, // Replace with your Web Client ID from Google Console
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, 
+        offlineAccess: true, // Add this to include refresh token
       });
     }
   }, []);
@@ -48,10 +49,15 @@ export const SignInScreen = () => {
       } else {
         // Mobile OAuth flow
         await GoogleSignin.hasPlayServices();
+        try {
+          await GoogleSignin.signOut();
+        } catch (signOutError) {
+          console.log('Google Sign-Out Error:', signOutError);
+        }
         const userInfo = await GoogleSignin.signIn();
         console.log('Google Sign-In Success:', userInfo);
 
-        const idToken = userInfo.data?.idToken; // Ensure this is the correct property
+        const idToken = userInfo.data?.idToken; 
         if (idToken) {
           const { data, error } = await supabase.auth.signInWithIdToken({
             provider: 'google',
@@ -60,8 +66,6 @@ export const SignInScreen = () => {
 
           if (error) throw error;
 
-          //console.log('Signed in with Supabase successfully', data);
-          //navigation.replace('HomeScreen', { user: data.user });
         } else {
           throw new Error('No ID token returned');
         }

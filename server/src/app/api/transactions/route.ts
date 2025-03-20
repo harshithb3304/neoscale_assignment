@@ -46,27 +46,6 @@ export async function GET(request: Request) {
     const minAmount = searchParams.get('minAmount');
     const maxAmount = searchParams.get('maxAmount');
 
-    // const transactions = await prisma.transaction.findMany({
-    //   where: {
-    //     userId: dbUser.id,
-    //     ...(issplit !== null && { issplit: issplit === 'true' }),
-    //     ...(startDate && { date: { gte: new Date(startDate) } }),
-    //     ...(endDate && { date: { lte: new Date(endDate) } }),
-    //     ...(minAmount !== null && { amount: { gte: parseFloat(minAmount) } }),
-    //     ...(maxAmount !== null && { amount: { lte: parseFloat(maxAmount) } }),
-    //   },
-    //   include: {
-    //     splits: {
-    //         include: {
-    //         user: true
-    //       }
-    //     }
-    //   },
-    //   orderBy: {
-    //     date: 'desc',
-    //   },
-    // });
-
 
     const transactions = await prisma.transaction.findMany({
       where: {
@@ -107,7 +86,7 @@ export async function GET(request: Request) {
         date: 'desc',
       },
     });
-
+    console.log('Fetched Transactions:', transactions)
     return NextResponse.json({ transactions }, { headers: corsHeaders });
   } catch (error) {
     console.error('Error fetching transactions:', error);
