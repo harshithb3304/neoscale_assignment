@@ -1,5 +1,38 @@
 # Project Setup Guide
 
+# Assumptions Made During Implementation
+
+## 1️⃣ Authentication Assumptions
+- **Only Google OAuth is supported** – No other authentication methods (e.g., email/password, Apple Sign-In).
+- **Users must be signed in to access any feature** – No guest mode or anonymous access.
+- **Supabase manages authentication** – No custom authentication logic; all users exist in `auth.users`.
+
+---
+
+## 2️⃣ Backend Assumptions
+- **Users can only view their own transactions** – No ability to see other users' transactions unless they are part of a split transaction.
+- **Friend relationships are mutual** – If `User A` adds `User B` as a friend, `User B` automatically sees `User A` as a friend.
+- **Splitting a transaction is irreversible** – Once a transaction is marked as "Split," it cannot be undone.
+- **Transactions are split equally** – No custom split ratios (e.g., 60-40, custom amounts).
+
+---
+
+## 3️⃣ Database Assumptions
+- **User data is stored in a separate table (`User`) linked to `auth.users`** – Instead of relying solely on Supabase’s auth system.
+- **Transactions and splits are stored separately** – The `Split` table references `Transaction` and `User`.
+- **A user must be in the `Friend` table to split transactions with another user** – Prevents splitting with random users.
+
+---
+
+## 4️⃣ Frontend Assumptions
+- **Transactions list is read-only** – Users cannot add or delete transactions, only split them.
+- **Transactions are fetched in real-time** – The app does not cache transactions locally.
+- **Minimal UI customization** – The UI follows standard React Native components with basic styling (no animations or advanced UI features).
+- **Transactions are displayed in chronological order** – Sorted by date (newest first).
+
+---
+
+
 ## Prerequisites
 Ensure you have the following installed:
 - [Node.js](https://nodejs.org/) (LTS version recommended)
@@ -379,3 +412,29 @@ For additional help, refer to the documentation of the respective technologies:
 - [Prisma Documentation](https://www.prisma.io/docs)
 - [Supabase Documentation](https://supabase.com/docs)
 - [ReactNative Environment Setup](https://reactnative.dev/docs/environment-setup)
+
+## 8. Key Images and Screenshots 
+
+
+### 🔹 **Homepage**
+![Homepage](./assets/Homepage.png)
+
+### 🔹 **Landing Page**
+![Landing Page](./assets/landingpage.png)
+
+### 🔹 **Friends Screen**
+![Friends Screen](./assets/FriendsScreen.png)
+
+### 🔹 **Transaction List**
+![Transactions](./assets/Transactions.png)
+
+### 🔹 **Split Transaction Modal**
+![Split Modal](./assets/SplitModal.png)
+
+### 🔹 **Filter Transactions**
+![Filter Transactions](./assets/Filter.png)
+
+### 🔹 **Database Schema**
+![Database Schema](./assets/Schema.png)
+
+---
