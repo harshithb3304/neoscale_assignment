@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Text, Image, TextInput, TouchableOpacity } from 'react-native';
 import { Button, Avatar, Icon } from 'react-native-elements';
-import { supabase } from '../../config/supabase';
+import supabase from '../utils/supabase';
 import { User } from '@supabase/supabase-js';
 import { useNavigation } from '@react-navigation/native';
 
@@ -13,10 +13,24 @@ export const HomeScreen = () => {
 
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      setName(user?.user_metadata?.full_name || '');
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData?.session) {
+          console.warn("No active session found!");
+          return;
+        }
+    
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) throw error;
+    
+        console.log("User Data:", user);
+        setUser(user);
+        setName(user?.user_metadata?.full_name || 'Guest');
+      } catch (err) {
+        console.error("Error fetching user:", err);
+      }
     };
+    
     fetchUser();
   }, []);
 

@@ -1,9 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { View, FlatList, StyleSheet, TextInput, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import { View, FlatList, StyleSheet, TextInput, TouchableOpacity, ScrollView, Modal,Animated } from 'react-native';
 import { Text, Button, Icon, CheckBox } from 'react-native-elements';
 import axios from 'axios';
-import { supabase } from '../../config/supabase';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import supabase from '../utils/supabase';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Platform } from 'react-native';
+
+const API_URL =
+  Platform.OS === 'android'
+    ? 'http://10.0.2.2:3000/api' // ✅ Android Emulator
+    : Platform.OS === 'ios'
+    ? 'http://127.0.0.1:3000/api' // ✅ iOS Simulator
+    : 'http://localhost:3000/api'; // ✅ Web (React Native for Web / Expo Web)
+
 
 interface User {
   id: string;
@@ -49,7 +58,7 @@ interface SplitTransactionModalProps {
   fetchTransactions: () => void;
 }
 
-const API_URL = 'http://localhost:3000/api';
+// const API_URL = 'http://localhost:3000/api';
 
 export const TransactionsScreen = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -62,11 +71,27 @@ export const TransactionsScreen = () => {
     minAmount: null as number | null,
     maxAmount: null as number | null,
   });
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const [datePickerMode, setDatePickerMode] = useState<'start' | 'end'>('start');
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [isSplitModalVisible, setSplitModalVisible] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [filterAnimation] = useState(new Animated.Value(0));
+  useEffect(() => {
+    if (isFilterModalVisible) {
+      Animated.timing(filterAnimation, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(filterAnimation, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isFilterModalVisible]);
 
   useEffect(() => {
     fetchCurrentUser();
@@ -132,16 +157,16 @@ export const TransactionsScreen = () => {
     }
   };
 
-  const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      if (datePickerMode === 'start') {
-        setFilters({ ...filters, startDate: selectedDate });
-      } else {
-        setFilters({ ...filters, endDate: selectedDate });
-      }
-    }
-  };
+  // const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+  //   setShowDatePicker(false);
+  //   if (selectedDate) {
+  //     if (datePickerMode === 'start') {
+  //       setFilters({ ...filters, startDate: selectedDate });
+  //     } else {
+  //       setFilters({ ...filters, endDate: selectedDate });
+  //     }
+  //   }
+  // };
 
   const handleSplitTransaction = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
@@ -224,6 +249,10 @@ export const TransactionsScreen = () => {
       </View>
     );
   }
+  const translateY = filterAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [600, 0],
+  });
 
   return (
     <View style={styles.container}>
@@ -239,86 +268,184 @@ export const TransactionsScreen = () => {
       <Modal
         visible={isFilterModalVisible}
         transparent={true}
+        animationType="none"
         onRequestClose={() => setFilterModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
-          <ScrollView style={styles.filterModal}>
-            <Text h4 style={styles.filterModalTitle}>Filters</Text>
-
-            {/* Split Filter */}
-            <Button
-              title={filters.issplit === true ? 'Hide Split Transactions' : 'Show Split Transactions'}
-              onPress={() => setFilters({ ...filters, issplit: filters.issplit === true ? null : true })}
-              buttonStyle={styles.filterOptionButton}
-            />
-
-            {/* Date Range Filter */}
-            <Text style={styles.filterLabel}>Date Range</Text>
-            <View style={styles.dateRangeContainer}>
-              <Button
-                title={filters.startDate ? filters.startDate.toLocaleDateString() : 'Start Date'}
-                onPress={() => {
-                  setDatePickerMode('start');
-                  setShowDatePicker(true);
-                }}
-                buttonStyle={styles.dateButton}
-              />
-              <Text style={styles.dateRangeSeparator}>to</Text>
-              <Button
-                title={filters.endDate ? filters.endDate.toLocaleDateString() : 'End Date'}
-                onPress={() => {
-                  setDatePickerMode('end');
-                  setShowDatePicker(true);
-                }}
-                buttonStyle={styles.dateButton}
-              />
+        <View style={styles.modalBackdrop}>
+          <Animated.View 
+            style={[
+              styles.filterModalContainer,
+              { transform: [{ translateY: filterAnimation.interpolate({
+                inputRange: [0, 1],
+                outputRange: [600, 0],
+              }) }] }
+            ]}
+          >
+            <View style={styles.filterHeader}>
+              <Text h4 style={styles.filterTitle}>Filters</Text>
+              <TouchableOpacity 
+                onPress={() => setFilterModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <Icon name="close" type="material" size={24} color="#666" />
+              </TouchableOpacity>
             </View>
 
-            {/* Amount Filter */}
-            <Text style={styles.filterLabel}>Amount Range</Text>
-            <View style={styles.amountRangeContainer}>
-              <TextInput
-                placeholder="Min Amount"
-                value={filters.minAmount?.toString() || ''}
-                onChangeText={(text) => setFilters({ ...filters, minAmount: text ? parseFloat(text) : null })}
-                style={styles.amountInput}
-                keyboardType="numeric"
+            <ScrollView style={styles.filterContent}>
+              {/* Split Filter */}
+              <View style={styles.filterSection}>
+                <Text style={styles.sectionTitle}>Transaction Type</Text>
+                <TouchableOpacity
+                  style={[
+                    styles.filterOption,
+                    filters.issplit === true && styles.activeFilterOption
+                  ]}
+                  onPress={() => setFilters({ ...filters, issplit: filters.issplit === true ? null : true })}
+                >
+                  <Icon
+                    name="call-split"
+                    type="material"
+                    color={filters.issplit === true ? "#fff" : "#666"}
+                    size={20}
+                  />
+                  <Text style={[
+                    styles.optionText,
+                    filters.issplit === true && styles.activeOptionText
+                  ]}>
+                    Split Transactions
+                  </Text>
+                  {filters.issplit === true && (
+                    <Icon
+                      name="check"
+                      type="material"
+                      color="#fff"
+                      size={20}
+                      style={styles.checkIcon}
+                    />
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Date Range Filter */}
+              <View style={styles.filterSection}>
+                <Text style={styles.sectionTitle}>Date Range</Text>
+                <View style={styles.dateRangeContainer}>
+                  <TouchableOpacity
+                    style={styles.dateInput}
+                    onPress={() => {
+                      setDatePickerMode('start');
+                      setDatePickerVisibility(true);
+                    }}
+                  >
+                    <Text style={styles.dateLabel}>From</Text>
+                    <Text style={styles.dateValue}>
+                      {filters.startDate ? filters.startDate.toLocaleDateString() : 'Select date'}
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  <View style={styles.dateSeparator} />
+                  
+                  <TouchableOpacity
+                    style={styles.dateInput}
+                    onPress={() => {
+                      setDatePickerMode('end');
+                      setDatePickerVisibility(true);
+                    }}
+                  >
+                    <Text style={styles.dateLabel}>To</Text>
+                    <Text style={styles.dateValue}>
+                      {filters.endDate ? filters.endDate.toLocaleDateString() : 'Select date'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Amount Range Filter */}
+              <View style={styles.filterSection}>
+                <Text style={styles.sectionTitle}>Amount Range</Text>
+                <View style={styles.amountRangeContainer}>
+                  <View style={styles.amountInputContainer}>
+                    <Text style={styles.amountLabel}>Minimum</Text>
+                    <TextInput
+                      placeholder="₹0"
+                      value={filters.minAmount?.toString() || ''}
+                      onChangeText={(text) => {
+                        const value = text.trim() === '' ? null : parseFloat(text);
+                        setFilters({ ...filters, minAmount: value });
+                      }}
+                      style={styles.amountInput}
+                      keyboardType="numeric"
+                      placeholderTextColor="#999"
+                    />
+                  </View>
+                  
+                  <View style={styles.amountSeparator} />
+                  
+                  <View style={styles.amountInputContainer}>
+                    <Text style={styles.amountLabel}>Maximum</Text>
+                    <TextInput
+                      placeholder="No limit"
+                      value={filters.maxAmount?.toString() || ''}
+                      onChangeText={(text) => {
+                        const value = text.trim() === '' ? null : parseFloat(text);
+                        setFilters({ ...filters, maxAmount: value });
+                      }}
+                      style={styles.amountInput}
+                      keyboardType="numeric"
+                      placeholderTextColor="#999"
+                    />
+                  </View>
+                </View>
+              </View>
+            </ScrollView>
+
+            {/* Filter Actions */}
+            <View style={styles.filterActions}>
+              <Button
+                title="Clear All"
+                onPress={() => setFilters({
+                  issplit: null,
+                  startDate: null,
+                  endDate: null,
+                  minAmount: null,
+                  maxAmount: null,
+                })}
+                buttonStyle={styles.clearButton}
+                titleStyle={styles.clearButtonText}
+                type="outline"
               />
-              <TextInput
-                placeholder="Max Amount"
-                value={filters.maxAmount?.toString() || ''}
-                onChangeText={(text) => setFilters({ ...filters, maxAmount: text ? parseFloat(text) : null })}
-                style={styles.amountInput}
-                keyboardType="numeric"
+              <Button
+                title="Apply Filters"
+                onPress={() => {
+                  fetchTransactions();
+                  setFilterModalVisible(false);
+                }}
+                buttonStyle={styles.applyButton}
+                titleStyle={styles.applyButtonText}
               />
             </View>
-
-            {/* Clear Filters */}
-            <Button
-              title="Clear Filters"
-              onPress={() => setFilters({
-                issplit: null,
-                startDate: null,
-                endDate: null,
-                minAmount: null,
-                maxAmount: null,
-              })}
-              buttonStyle={styles.clearFiltersButton}
-            />
-          </ScrollView>
+          </Animated.View>
         </View>
       </Modal>
 
-      {/* Date Picker */}
-      {showDatePicker && (
+      {/* DateTimePicker */}
+      {isDatePickerVisible && (
         <DateTimePicker
-          value={datePickerMode === 'start' ? filters.startDate || new Date() : filters.endDate || new Date()}
+          value={datePickerMode === 'start' ? (filters.startDate || new Date()) : (filters.endDate || new Date())}
           mode="date"
           display="default"
-          onChange={handleDateChange}
+          onChange={(event, selectedDate) => {
+            setDatePickerVisibility(false); // Hide the picker after selection
+            if (selectedDate) {
+              if (datePickerMode === 'start') {
+                setFilters({ ...filters, startDate: selectedDate });
+              } else {
+                setFilters({ ...filters, endDate: selectedDate });
+              }
+            }
+          }}
         />
       )}
-
       {/* Transactions List */}
       {transactions.length > 0 ? (
         <FlatList
@@ -481,6 +608,130 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     padding: 10,
   },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  filterModalContainer: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '90%',
+  },
+  filterHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  filterTitle: {
+    fontSize: 22,
+    fontWeight: '600',
+  },
+  closeButton: {
+    padding: 5,
+  },
+  filterContent: {
+    flexGrow: 1,
+  },
+  filterSection: {
+    marginBottom: 25,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 15,
+    color: '#333',
+  },
+  filterOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    borderRadius: 10,
+    backgroundColor: '#f5f5f5',
+  },
+  activeFilterOption: {
+    backgroundColor: '#2089dc',
+  },
+  optionText: {
+    marginLeft: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  activeOptionText: {
+    color: '#fff',
+  },
+  checkIcon: {
+    marginLeft: 'auto',
+  },
+  dateRangeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  dateInput: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 10,
+    backgroundColor: '#f5f5f5',
+  },
+  dateLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 5,
+  },
+  dateValue: {
+    fontSize: 16,
+    color: '#333',
+  },
+  dateSeparator: {
+    width: 10,
+  },
+  amountRangeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  amountInputContainer: {
+    flex: 1,
+  },
+  amountLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 5,
+  },
+  amountInput: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 10,
+    padding: 15,
+    fontSize: 16,
+    color: '#333',
+  },
+  amountSeparator: {
+    width: 10,
+  },
+  filterActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  clearButton: {
+    flex: 1,
+    marginRight: 10,
+    borderColor: '#2089dc',
+    borderRadius: 10,
+  },
+  clearButtonText: {
+    color: '#2089dc',
+  },
+  applyButton: {
+    flex: 1,
+    backgroundColor: '#2089dc',
+    borderRadius: 10,
+  },
+  applyButtonText: {
+    color: '#fff',
+  },
   listContainer: {
     paddingBottom: 20,
   },
@@ -557,12 +808,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
   },
-  dateRangeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
+  // dateRangeContainer: {
+  //   flexDirection: 'row',
+  //   justifyContent: 'space-between',
+  //   alignItems: 'center',
+  //   marginBottom: 20,
+  // },
   dateButton: {
     backgroundColor: '#f0f0f0',
     borderRadius: 5,
@@ -573,19 +824,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  amountRangeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  amountInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    padding: 10,
-    marginHorizontal: 5,
-  },
+  // amountRangeContainer: {
+  //   flexDirection: 'row',
+  //   justifyContent: 'space-between',
+  //   marginBottom: 20,
+  // },
+  // amountInput: {
+  //   flex: 1,
+  //   borderWidth: 1,
+  //   borderColor: '#ccc',
+  //   borderRadius: 5,
+  //   padding: 10,
+  //   marginHorizontal: 5,
+  // },
   clearFiltersButton: {
     backgroundColor: '#f44336',
     borderRadius: 5,

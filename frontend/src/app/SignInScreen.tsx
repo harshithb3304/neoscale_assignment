@@ -1,38 +1,88 @@
-import React from 'react';
-import { View, StyleSheet, Text, ActivityIndicator } from 'react-native';
-import { Button } from 'react-native-elements';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, Text, ActivityIndicator, Alert, Image, TouchableOpacity, Platform } from 'react-native';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import * as WebBrowser from 'expo-web-browser';
-import { supabase } from '../../config/supabase';
+import supabase from '../utils/supabase';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 
-WebBrowser.maybeCompleteAuthSession();
+// Define the navigation types
+type RootStackParamList = {
+  SignIn: undefined;
+  HomeScreen: { user: any }; // Replace `any` with the actual user type
+};
+
+type SignInScreenNavigationProp = StackNavigationProp<RootStackParamList, 'SignIn'>;
 
 export const SignInScreen = () => {
-  const [loading, setLoading] = React.useState(false);
+  const navigation = useNavigation<SignInScreenNavigationProp>();
+  const [loading, setLoading] = useState(false);
 
-  const handleSignIn = async () => {
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      GoogleSignin.configure({
+        scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, // Replace with your Web Client ID from Google Console
+      });
+    }
+  }, []);
+
+  const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          scopes: 'email profile',
-          skipBrowserRedirect: false,
-          redirectTo: 'exp://127.0.0.1:8081'
+
+      if (Platform.OS === 'web') {
+        // Web OAuth flow
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin, // Redirect to the current page after sign-in
+          },
+        });
+
+        if (error) throw error;
+
+        if (data?.url) {
+          await WebBrowser.openAuthSessionAsync(data.url, window.location.origin);
         }
-      });
-      
-      if (error) throw error;
-      
-      if (data?.url) {
-        await WebBrowser.openAuthSessionAsync(
-          data.url,
-          'localhost:8081'
-        );
+      } else {
+        // Mobile OAuth flow
+        await GoogleSignin.hasPlayServices();
+        const userInfo = await GoogleSignin.signIn();
+        console.log('Google Sign-In Success:', userInfo);
+
+        const idToken = userInfo.data?.idToken; // Ensure this is the correct property
+        if (idToken) {
+          const { data, error } = await supabase.auth.signInWithIdToken({
+            provider: 'google',
+            token: idToken,
+          });
+
+          if (error) throw error;
+
+          //console.log('Signed in with Supabase successfully', data);
+          //navigation.replace('HomeScreen', { user: data.user });
+        } else {
+          throw new Error('No ID token returned');
+        }
       }
     } catch (error) {
-      console.error('Sign-in error:', error || 'Failed to sign in');
+      console.error('Google Sign-In Error:', error);
+      handleSignInError(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSignInError = (error: any) => {
+    if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+      Alert.alert('Sign In Cancelled', 'User cancelled the login flow.');
+    } else if (error.code === statusCodes.IN_PROGRESS) {
+      Alert.alert('Sign In In Progress', 'Sign in is already in progress.');
+    } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+      Alert.alert('Play Services Error', 'Google Play services not available or outdated.');
+    } else {
+      Alert.alert('Error', error.message || 'Sign-in failed.');
     }
   };
 
@@ -43,14 +93,10 @@ export const SignInScreen = () => {
       {loading ? (
         <ActivityIndicator size="large" color="#4285F4" style={styles.loader} />
       ) : (
-        <Button
-          title="Sign in with Google"
-          onPress={handleSignIn}
-          buttonStyle={styles.googleButton}
-          icon={{ name: 'google', type: 'font-awesome', color: 'white', size: 20 }}
-          iconContainerStyle={styles.iconContainer}
-          disabled={loading}
-        />
+        <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignIn}>
+          <Image source={require('../../assets/google.png')} style={styles.googleIcon} />
+          <Text style={styles.googleText}>Sign in with Google</Text>
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -77,13 +123,29 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   googleButton: {
-    backgroundColor: '#4285F4',
-    borderRadius: 5,
+    width: '90%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
     paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
-  iconContainer: {
+  googleIcon: {
+    width: 24,
+    height: 24,
     marginRight: 10,
+  },
+  googleText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
   },
   loader: {
     marginTop: 20,

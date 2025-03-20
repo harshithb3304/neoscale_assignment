@@ -4,9 +4,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SignInScreen } from './src/app/SignInScreen';
 import { HomeScreen } from './src/app/HomeScreen';
 import { TransactionsScreen } from './src/app/TransactionsScreen';
-import { FriendsScreen } from './src/app/FriendsScreen'; // ✅ Import FriendsScreen
-import { supabase } from './config/supabase';
+import { FriendsScreen } from './src/app/FriendsScreen';
+import supabase from './src/utils/supabase';
 import { Session } from '@supabase/supabase-js';
+import { SessionProvider } from './src/app/SessionContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -27,6 +28,7 @@ export default function App() {
   }, []);
 
   return (
+    <SessionProvider>
     <NavigationContainer>
       <Stack.Navigator>
         {!session ? (
@@ -38,7 +40,7 @@ export default function App() {
         ) : (
           <>
             <Stack.Screen
-              name="Home"
+              name="HomeScreen"
               component={HomeScreen}
               options={{ headerShown: false }}
             />
@@ -74,5 +76,6 @@ export default function App() {
         )}
       </Stack.Navigator>
     </NavigationContainer>
+    </SessionProvider>
   );
 }

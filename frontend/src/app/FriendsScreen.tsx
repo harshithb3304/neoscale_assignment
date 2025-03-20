@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, FlatList, StyleSheet, Image } from 'react-native';
+import { View, FlatList, StyleSheet, Alert } from 'react-native';
 import { Text, Button, ListItem, Avatar } from 'react-native-elements';
 import axios from 'axios';
 import { supabase } from '../../config/supabase';
+import { useSession } from './SessionContext';
+import { Platform } from 'react-native';
 
 interface Friend {
   id: string;
@@ -11,27 +13,38 @@ interface Friend {
   avatar_url?: string;
 }
 
-const API_URL = 'http://localhost:3000/api/friends'; // Adjust as needed
+
+
+const API_URL =
+  Platform.OS === 'android'
+    ? 'http://10.0.2.2:3000/api/friends' // ✅ Android Emulator
+    : Platform.OS === 'ios'
+    ? 'http://127.0.0.1:3000/api/friends' // ✅ iOS Simulator
+    : 'http://localhost:3000/api/friends'; // ✅ Web (React Native for Web / Expo Web)
+
+
 
 export const FriendsScreen = ({ navigation }: { navigation: any }) => {
+  const { session, loading: sessionLoading } = useSession();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!session) {
+      console.error("No active session found.");
+      Alert.alert("Error", "You must be logged in to view friends.");
+      navigation.navigate('SignIn' as never);
+      return;
+    }
+
     fetchFriends();
-  }, []);
+  }, [session]);
 
   const fetchFriends = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.error("No active session found.");
-        return;
-      }
-
       const response = await axios.get(API_URL, {
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${session!.access_token}`,
         },
       });
 
@@ -39,6 +52,7 @@ export const FriendsScreen = ({ navigation }: { navigation: any }) => {
       setFriends(response.data.friends || []);
     } catch (error: any) {
       console.error('Error fetching friends:', error.response?.data || error);
+      Alert.alert("Error", "Failed to fetch friends. Please try again later.");
     } finally {
       setLoading(false);
     }
@@ -57,7 +71,7 @@ export const FriendsScreen = ({ navigation }: { navigation: any }) => {
     </ListItem>
   );
 
-  if (loading) {
+  if (loading || sessionLoading) {
     return (
       <View style={styles.container}>
         <Text>Loading friends...</Text>
@@ -76,7 +90,7 @@ export const FriendsScreen = ({ navigation }: { navigation: any }) => {
         />
       ) : (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No friends found</Text>
+          <Text style={styles.emptyText}>No friends found. Add some friends to get started!</Text>
         </View>
       )}
       <Button
