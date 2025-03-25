@@ -519,6 +519,11 @@ const SplitTransactionModal = ({ visible, onClose, transaction, fetchTransaction
         {
           transactionId: transaction.id,
           friendIds: selectedFriends,
+          description: transaction.description,
+          amount: transaction.amount,
+          currency: 'INR',
+          category_id: 15,
+          group_id: 79216887,
         },
         {
           headers: {
